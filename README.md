@@ -5,6 +5,7 @@ A robotic arm built from LEGO Technic parts, driven by two DC motors (combined w
 ## Overview
 
 This project combines mechanical LEGO Technic construction with embedded electronics to build a functional robotic arm:
+
 - **Two DC motors**, wired through an L293D H-bridge and combined onto a single control input, act as a winch, pulling a string to move the arm (gravity returns the arm when the string is let out).
 - **A servo motor** drives a gear-driven LEGO claw mechanism to open and close a gripper, with the servo body anchored to the frame so only the drive gear rotates.
 - **A joystick** provides proportional analog control over the winch motors.
@@ -13,7 +14,7 @@ This project combines mechanical LEGO Technic construction with embedded electro
 ## Components Used
 
 | Component | Purpose |
-
+|---|---|
 | SparkFun RedBoard (Arduino Uno-compatible) | Main microcontroller |
 | L293D H-bridge IC | Dual motor driver for the two DC motors |
 | 2x DC gear motors | Drive the winch string for arm movement |
@@ -34,8 +35,9 @@ This project combines mechanical LEGO Technic construction with embedded electro
 ## Wiring
 
 **L293D (16-pin DIP):**
-| Pin | Function | Connects to |
 
+| Pin | Function | Connects to |
+|---|---|---|
 | 1 | Enable 1,2 | D3 (PWM) |
 | 2 | 1A | D4 |
 | 3 | 1Y | Motor 1 terminal |
@@ -52,6 +54,7 @@ This project combines mechanical LEGO Technic construction with embedded electro
 | 16 | VCC1 (logic power) | 5V rail |
 
 **Other components:**
+
 | Component | Pin | Connects to |
 |---|---|---|
 | Joystick | VCC / GND | 5V / GND |
@@ -66,33 +69,33 @@ All grounds (RedBoard, L293D, power module, servo) share a common ground rail.
 
 ## Code
 
-See ['robot_arm.ino'](./robot_arm.ino) for the full sketch. Core logic:
+See [`robot_arm.ino`](./robot_arm.ino) for the full sketch. Core logic:
 
-- 'mapJoystickToSpeed()' converts a raw joystick reading into a signed motor speed, with a deadzone to prevent drift near center.
-- 'driveMotor()' sets direction and PWM speed on a given motor via the L293D.
-- 'handleClawPot()' reads the potentiometer and proportionally maps it to a servo angle.
+- `mapJoystickToSpeed()` converts a raw joystick reading into a signed motor speed, with a deadzone to prevent drift near center.
+- `driveMotor()` sets direction and PWM speed on a given motor via the L293D.
+- `handleClawPot()` reads the potentiometer and proportionally maps it to a servo angle.
 
 ## Debugging Notes
 
-The most significant issue encountered: both DC motors stopped responding entirely once the servo was attached in code, despite testing fine in isolation with hardcoded pin writes.
+The most significant issue encountered: **both DC motors stopped responding entirely once the servo was attached in code**, despite testing fine in isolation with hardcoded pin writes.
 
-Root cause: on the ATmega328 (Uno/RedBoard), the 'Servo' library takes over Timer1 to generate its control pulses. Timer1 is also what drives 'analogWrite()' PWM output on pins D9 and D10 - the original enable pins for the two motors. The moment 'servo.attach()' was called, PWM on D9/D10 silently broke, even though the digital direction pins and chip wiring were otherwise correct.
+Root cause: on the ATmega328 (Uno/RedBoard), the `Servo` library takes over **Timer1** to generate its control pulses. Timer1 is also what drives `analogWrite()` PWM output on pins **D9 and D10** — the original enable pins for the two motors. The moment `servo.attach()` was called, PWM on D9/D10 silently broke, even though the digital direction pins and chip wiring were otherwise correct.
 
-Fix: moved both motor enable pins to D3 and D6, which use different timers and don't conflict with the Servo library.
+**Fix:** moved both motor enable pins to D3 and D6, which use different timers and don't conflict with the Servo library.
 
 This was isolated by:
 1. Confirming both motors spun correctly when tested directly off the battery (ruled out the motors themselves).
 2. Bypassing the RedBoard entirely and driving the L293D pins directly with jumper wires to 5V/GND (confirmed the chip and wiring were correct).
-3. Running a minimal test sketch with hardcoded 'digitalWrite'/'analogWrite' calls and no 'Servo' library included - motors worked.
-4. Adding the 'Servo' library and 'attach()' call back in - motors stopped working again, pointing directly at the timer conflict.
+3. Running a minimal test sketch with hardcoded `digitalWrite`/`analogWrite` calls and no `Servo` library included — motors worked.
+4. Adding the `Servo` library and `attach()` call back in — motors stopped working again, pointing directly at the timer conflict.
 
 ## Known Limitations
 
 The winch mechanism's available torque, even with both motors combined onto a single string, was insufficient to reliably lift the arm's full assembled weight against gravity in the final build. The claw and its potentiometer-controlled servo are fully functional independent of this; the joystick-driven motor control and direction switching also work correctly, but the arm's lift capacity is the one subsystem that didn't reach its original design target within the project's timeframe.
 
-Root cause: small hobby DC gear motors (rated for light loads) driving a direct-pull winch have limited torque at the string's effective radius; the combined pull of two motors improved this but didn't fully close the gap.
+**Root cause:** small hobby DC gear motors (rated for light loads) driving a direct-pull winch have limited torque at the string's effective radius; the combined pull of two motors plus a switch from a regulated 5V supply toward the battery's raw 9V improved this but didn't fully close the gap.
 
-What would fix it with more time/parts: a geared reduction stage between the motor and the winch spool (trading speed for torque), or motors rated for a higher stall torque, would be the most direct fix. A smaller-diameter winch spool would also help, at the cost of slower winding speed.
+**What would fix it with more time/parts:** a geared reduction stage between the motor and the winch spool (trading speed for torque), or motors rated for a higher stall torque, would be the most direct fix. A smaller-diameter winch spool would also help, at the cost of slower winding speed.
 
 ## Possible Future Improvements
 
